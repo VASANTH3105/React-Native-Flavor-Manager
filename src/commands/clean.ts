@@ -111,31 +111,6 @@ export async function handleClean(cwd: string) {
     }
   }
 
-  // 2c. Clean react-native.config.js if created or update it
-  const configJsPath = path.join(cwd, 'react-native.config.js');
-  if (fs.existsSync(configJsPath)) {
-    try {
-      let content = await fs.readFile(configJsPath, 'utf8');
-      const boundaryStart = '// RNFM_START';
-      const boundaryEnd = '// RNFM_END';
-      if (content.includes(boundaryStart)) {
-        const startIdx = content.indexOf(boundaryStart);
-        const endIdx = content.indexOf(boundaryEnd) + boundaryEnd.length;
-        content = content.substring(0, startIdx) + content.substring(endIdx);
-        // clean up extra commas or empty objects
-        content = content.replace(/,\s*,/g, ',');
-        await fs.writeFile(configJsPath, content, 'utf8');
-        console.log(pc.green('✔ Cleaned react-native.config.js integrations'));
-      } else {
-        // If we created it fresh, it matches our default format
-        if (content.includes('packageName:') && content.includes('module.exports = {')) {
-          await fs.remove(configJsPath);
-          console.log(pc.green('✔ Removed react-native.config.js'));
-        }
-      }
-    } catch {}
-  }
-
   // 3. Run Android Gradle Clean
   const gradlewPath = path.join(cwd, 'android', 'gradlew');
   if (fs.existsSync(gradlewPath)) {
