@@ -55,7 +55,7 @@ export async function generateAndroid(cwd: string, config: AppConfig, options: G
 
   let newGradleContent = '';
   if (startIndex !== -1 && endIndex !== -1) {
-    // Replace existing block exactly
+    // Replace existing block exactly in place
     const before = gradleContent.substring(0, startIndex);
     const after = gradleContent.substring(endIndex + endMarker.length);
     newGradleContent = before + flavorBlock + after;
