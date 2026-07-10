@@ -1,0 +1,50 @@
+{
+  "name": "react-native-flavors",
+  "version": "0.1.0",
+  "description": "Configure, generate, and manage multiple React Native application variants from a single declarative configuration file.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "rn-flavors": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "react-native",
+    "flavors",
+    "environments",
+    "variants",
+    "white-label",
+    "android",
+    "ios"
+  ],
+  "author": "Vasanth S",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
+    "jiti": "^1.21.6",
+    "picocolors": "^1.0.1",
+    "prompts": "^2.4.2",
+    "sharp": "^0.35.3",
+    "xcode": "^3.0.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.14.9",
+    "@types/prompts": "^2.4.9",
+    "tsup": "^8.1.0",
+    "typescript": "^5.5.2",
+    "vitest": "^1.6.0"
+  }
+}
