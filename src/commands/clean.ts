@@ -86,6 +86,31 @@ export async function handleClean(cwd: string) {
     console.log(pc.green('✔ Removed environments/env.json'));
   }
 
+  // 2b. Run Clean hooks on plugins
+  let config;
+  try {
+    const loaded = await loadConfig(cwd);
+    config = loaded.config;
+  } catch {}
+
+  if (config && config.plugins && Array.isArray(config.plugins)) {
+    console.log(pc.cyan('\nRunning plugin clean hooks...'));
+    const { normalizeConfig } = await import('../config/config-loader.js');
+    const normalized = normalizeConfig(config);
+    for (const plugin of config.plugins) {
+      const p = plugin;
+      if (p && typeof p.onClean === 'function') {
+        try {
+          for (const flavorName of Object.keys(normalized.flavors)) {
+            await p.onClean({ cwd, config, flavorName });
+          }
+        } catch (error: any) {
+          console.log(pc.red(`⚠ Plugin '${p.name || 'unknown'}' clean hook failed: ${error.message}`));
+        }
+      }
+    }
+  }
+
   // 3. Run Android Gradle Clean
   const gradlewPath = path.join(cwd, 'android', 'gradlew');
   if (fs.existsSync(gradlewPath)) {

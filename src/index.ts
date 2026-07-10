@@ -9,6 +9,8 @@ import { handleGenerate } from './commands/generate.js';
 import { handleBuild } from './commands/build.js';
 import { handleClean } from './commands/clean.js';
 import { handleAddFlavor, handleRemoveFlavor } from './commands/manage-flavors.js';
+import { handleImport } from './commands/import.js';
+import { handleDashboard } from './commands/dashboard.js';
 
 const program = new Command();
 
@@ -33,9 +35,13 @@ program
   .command('generate')
   .description('Generate native flavor files from configuration')
   .option('--dry-run', 'Show proposed file changes without modifying files')
+  .option('-c, --client <client>', 'Overlay client configuration properties (White-label)')
   .action(async (options) => {
     try {
-      await handleGenerate(process.cwd(), options);
+      await handleGenerate(process.cwd(), {
+        dryRun: options.dryRun,
+        clientName: options.client
+      });
     } catch (err: any) {
       console.error(pc.red(`Error: ${err.message}`));
       process.exit(1);
@@ -69,7 +75,7 @@ program
 
 program
   .command('build <flavor>')
-  .description('Build the application for the specified flavor')
+  .description('Build the application for the specified flavor or client')
   .option('-p, --platform <type>', 'Platform to build (android or ios)', 'android')
   .option('--mode <type>', 'Build mode (debug or release)', 'release')
   .option('--bundle', 'Build Android App Bundle (.aab) instead of APK (.apk)')
@@ -118,10 +124,21 @@ program
     }
   });
 
+program
+  .command('import')
+  .description('Import existing Android/iOS configurations and migrate to flavors.config.ts')
+  .action(async () => {
+    try {
+      await handleImport(process.cwd());
+    } catch (err: any) {
+      console.error(pc.red(`Error: ${err.message}`));
+      process.exit(1);
+    }
+  });
+
 // Register placeholder commands for subsequent phases to provide helpful feedback
 const pendingCommands = [
-  { name: 'diff', desc: 'Compare local configurations with actual native setup (Phase 3)' },
-  { name: 'upgrade', desc: 'Upgrade RNFM configuration templates (Phase 3)' }
+  { name: 'upgrade', desc: 'Upgrade RNFM configuration templates (Phase 5)' }
 ];
 
 for (const cmd of pendingCommands) {
@@ -130,14 +147,24 @@ for (const cmd of pendingCommands) {
     .description(cmd.desc)
     .action(() => {
       console.log(pc.yellow(`\nThis command is scheduled for development in subsequent phases.`));
-      console.log(`Please refer to the PRD roadmap. Currently on Phase 2: Android Complete.\n`);
+      console.log(`Please refer to the PRD roadmap. Currently on Phase 4: Plugin System & White-label.\n`);
     });
 }
 
-// Fallback interactive mode if no arguments are provided
-if (!process.argv.slice(2).length) {
-  console.log(pc.bold(pc.cyan('\nReact Native Flavor Manager (RNFM)')));
-  program.outputHelp();
-} else {
-  program.parse(process.argv);
+// Fallback interactive dashboard if no arguments are provided
+async function run() {
+  if (!process.argv.slice(2).length) {
+    try {
+      await handleDashboard(process.cwd());
+    } catch (err: any) {
+      console.error(pc.red(`Dashboard Error: ${err.message}`));
+      process.exit(1);
+    }
+  } else {
+    program.parse(process.argv);
+  }
 }
+run();
+
+// Export plugins for import in flavors.config.ts
+export { firebase, sentry, oneSignal } from './plugins/index.js';

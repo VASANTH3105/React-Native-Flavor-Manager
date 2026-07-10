@@ -5,6 +5,8 @@ import pc from 'picocolors';
 import { loadConfig, normalizeConfig } from '../config/config-loader.js';
 import { activateEnvironment } from '../generators/env.js';
 import { findXcodeProject, activateIOSConfig } from '../generators/ios.js';
+import { applyClientOverlay } from '../generators/white-label.js';
+import { handleGenerate } from './generate.js';
 
 export interface BuildOptions {
   platform?: 'android' | 'ios';
@@ -12,7 +14,7 @@ export interface BuildOptions {
   bundle?: boolean;
 }
 
-export async function handleBuild(cwd: string, flavorName: string, options: BuildOptions = {}) {
+export async function handleBuild(cwd: string, flavorOrClientName: string, options: BuildOptions = {}) {
   const platform = options.platform || 'android';
   const mode = options.mode || 'release';
 
@@ -24,19 +26,38 @@ export async function handleBuild(cwd: string, flavorName: string, options: Buil
     process.exit(1);
   }
 
-  const { config } = loaded;
-  const normalized = normalizeConfig(config);
+  let { config } = loaded;
 
+  // Check if it's a client name or flavor name
+  const isClient = config.clients && Object.keys(config.clients).some(c => c.toLowerCase() === flavorOrClientName.toLowerCase());
+  let targetFlavorName = flavorOrClientName;
+
+  if (isClient) {
+    const matchedClient = Object.keys(config.clients).find(c => c.toLowerCase() === flavorOrClientName.toLowerCase())!;
+    
+    // 1. Overlay client configurations and run generate to synchronize native projects
+    console.log(pc.cyan(`\nBuilding Client '${matchedClient}'...`));
+    await handleGenerate(cwd, { clientName: matchedClient });
+    
+    // Reload overlay config to get updated flavors
+    const reloaded = await loadConfig(cwd);
+    config = await applyClientOverlay(cwd, reloaded.config, { clientName: matchedClient });
+    
+    // Default to build the first flavor for this client (e.g. production)
+    targetFlavorName = Object.keys(config.flavors)[0] || 'production';
+  }
+
+  const normalized = normalizeConfig(config);
   const flavorNames = Object.keys(normalized.flavors);
-  const matchedFlavor = flavorNames.find(f => f.toLowerCase() === flavorName.toLowerCase());
+  const matchedFlavor = flavorNames.find(f => f.toLowerCase() === targetFlavorName.toLowerCase());
 
   if (!matchedFlavor) {
-    console.log(pc.red(`\n✖ Flavor '${flavorName}' not found in configuration.`));
+    console.log(pc.red(`\n✖ Flavor '${targetFlavorName}' not found in configuration.`));
     console.log(`Available flavors: ${flavorNames.join(', ')}\n`);
     process.exit(1);
   }
 
-  // 1. Activate environment variables for the target flavor
+  // 2. Activate environment variables for the target flavor
   console.log(pc.cyan(`\nActivating environment for '${matchedFlavor}'...`));
   await activateEnvironment(cwd, matchedFlavor);
 
@@ -101,7 +122,7 @@ async function buildIOS(cwd: string, flavorName: string, mode: string) {
 
   // 2. Resolve target Scheme & Configurations
   const schemeName = `${projectName}-${flavorName}`;
-  const camelMode = mode.charAt(0).toUpperCase() + mode.slice(1); // Release or Debug
+  const camelMode = mode.charAt(0).toUpperCase() + mode.slice(1);
 
   // Check if workspace exists
   const workspacePath = path.join(cwd, 'ios', `${projectName}.xcworkspace`);
@@ -115,7 +136,7 @@ async function buildIOS(cwd: string, flavorName: string, mode: string) {
     '-configuration',
     camelMode,
     '-sdk',
-    'iphonesimulator', // default to simulator for safety and ease of use in dev environment
+    'iphonesimulator',
   ];
 
   console.log(pc.cyan(`\nStarting iOS build for flavor '${flavorName}' (${mode} mode)...`));
