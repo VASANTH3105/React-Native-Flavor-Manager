@@ -59,22 +59,33 @@ export async function handleValidate(cwd: string): Promise<boolean> {
       });
     }
 
-    // 3. Check for app icons (Check both icons/flavorName/icon.png and assets/flavorName/icon.png)
-    // If icons/ directory exists or assets/ directory exists
+    // 3. Check for app icons (Check flavor-specific first, then check global fallback icons)
     const iconDirs = [
       path.join(cwd, 'icons', flavorName),
       path.join(cwd, 'assets', flavorName, 'icons'),
       path.join(cwd, 'assets', flavorName),
     ];
     let iconFound = false;
-    const checkedPaths: string[] = [];
 
     for (const iconDir of iconDirs) {
       const possibleIcon = path.join(iconDir, 'icon.png');
-      checkedPaths.push(possibleIcon);
       if (fs.existsSync(possibleIcon)) {
         iconFound = true;
         break;
+      }
+    }
+
+    // Check for global fallback if flavor-specific icon is not found
+    if (!iconFound) {
+      const globalFallbacks = [
+        path.join(cwd, 'icons', 'icon.png'),
+        path.join(cwd, 'assets', 'icon.png'),
+      ];
+      for (const p of globalFallbacks) {
+        if (fs.existsSync(p)) {
+          iconFound = true;
+          break;
+        }
       }
     }
 
@@ -82,7 +93,7 @@ export async function handleValidate(cwd: string): Promise<boolean> {
       errors.push({
         type: 'error',
         message: `Flavor '${flavorName}' icon is missing.`,
-        expectedPath: `icons/${flavorName}/icon.png`,
+        expectedPath: `icons/${flavorName}/icon.png (or global fallback at icons/icon.png)`,
       });
     }
 
