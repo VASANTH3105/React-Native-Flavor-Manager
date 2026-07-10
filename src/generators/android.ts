@@ -60,17 +60,26 @@ export async function generateAndroid(cwd: string, config: AppConfig, options: G
     const after = gradleContent.substring(endIndex + endMarker.length);
     newGradleContent = before + flavorBlock + after;
   } else {
-    // Inject brand new block inside android { ... }
-    const androidRegex = /android\s*\{/;
-    const match = gradleContent.match(androidRegex);
+    // Inject brand new block immediately after defaultConfig { ... } block
+    const dcRegex = /defaultConfig\s*\{[^}]*\}/;
+    const match = gradleContent.match(dcRegex);
     if (!match) {
-      throw new Error("Could not find 'android {' block in android/app/build.gradle");
+      // Fallback to top of android block
+      const androidRegex = /android\s*\{/;
+      const aMatch = gradleContent.match(androidRegex);
+      if (!aMatch) {
+        throw new Error("Could not find 'android {' block in android/app/build.gradle");
+      }
+      const insertIndex = aMatch.index! + aMatch[0].length;
+      const before = gradleContent.substring(0, insertIndex);
+      const after = gradleContent.substring(insertIndex);
+      newGradleContent = before + '\n' + flavorBlock + '\n' + after;
+    } else {
+      const insertIndex = match.index! + match[0].length;
+      const before = gradleContent.substring(0, insertIndex);
+      const after = gradleContent.substring(insertIndex);
+      newGradleContent = before + '\n\n' + flavorBlock + '\n' + after;
     }
-
-    const insertIndex = match.index! + match[0].length;
-    const before = gradleContent.substring(0, insertIndex);
-    const after = gradleContent.substring(insertIndex);
-    newGradleContent = before + '\n' + flavorBlock + '\n' + after;
   }
 
   // Ensure default appName placeholder exists in defaultConfig to prevent compilation failures
